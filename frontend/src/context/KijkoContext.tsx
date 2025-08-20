@@ -2,8 +2,8 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 // Backend URL - update this to match your deployed backend
-const BACKEND_URL = 'https://3001-iaxx0o3ruogtmyukx6kam-6532622b.e2b.dev';
-const WS_URL = 'wss://3001-iaxx0o3ruogtmyukx6kam-6532622b.e2b.dev';
+const BACKEND_URL = 'http://localhost:3001';
+const WS_URL = 'ws://localhost:3001';
 
 // Import types from shared
 interface Project {
@@ -62,14 +62,7 @@ type KijkoAction =
 
 const initialState: KijkoState = {
   currentProject: null,
-  messages: [
-    {
-      id: '1',
-      type: 'agent',
-      content: 'Hello! I\'m Kijko, your AI Video Production Agent. I can help you create professional videos from your ideas using Google Gemini AI. Just describe what you want to create!\n\n🎬 **My capabilities:**\n- Creative discovery and brief generation\n- Storyboard creation with Imagen 3.0\n- Video generation with Veo 2.0\n- Interactive feedback and refinement\n- Multi-modal content analysis\n\nTo get started, you\'ll need to provide your **Gemini API key** in the settings panel.',
-      timestamp: new Date()
-    }
-  ],
+  messages: [],
   isProcessing: false,
   storyboardFrames: [],
   showSettings: false,
@@ -152,7 +145,7 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const connectWebSocket = () => {
+  const connectWebSocket = async () => {
     if (state.wsConnection?.readyState === WebSocket.OPEN) {
       return; // Already connected
     }
@@ -160,6 +153,16 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connecting' });
     
     try {
+      // First check if backend is available
+      const healthCheck = await fetch(`${BACKEND_URL}/api/health`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!healthCheck.ok) {
+        throw new Error('Backend not available');
+      }
+      
       const ws = new WebSocket(`${WS_URL}?sessionId=${state.sessionId}`);
       
       ws.onopen = () => {
@@ -226,17 +229,8 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
     dispatch({ type: 'SET_PROCESSING', payload: true });
 
-    if (!state.apiKey) {
-      const errorMessage: ChatMessage = {
-        id: uuidv4(),
-        type: 'agent',
-        content: '⚠️ Please set your Gemini API key in the settings panel first.',
-        timestamp: new Date()
-      };
-      dispatch({ type: 'ADD_MESSAGE', payload: errorMessage });
-      dispatch({ type: 'SET_PROCESSING', payload: false });
-      return;
-    }
+    // API key is optional - backend has its own key configured
+    // Frontend API key is only used as an override if provided
 
     try {
       if (streaming && state.wsConnection?.readyState === WebSocket.OPEN) {
@@ -247,12 +241,18 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
         }));
       } else {
         // Use HTTP API
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+
+        // Only add Authorization header if user provided an API key override
+        if (state.apiKey) {
+          headers['Authorization'] = `Bearer ${state.apiKey}`;
+        }
+
         const response = await fetch(`${BACKEND_URL}/api/chat/message`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.apiKey}`
-          },
+          headers,
           body: JSON.stringify({
             message: content,
             sessionId: state.sessionId,
@@ -274,7 +274,8 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
 
           // Auto-generate content based on keywords
           if (content.toLowerCase().includes('brief') || content.toLowerCase().includes('create') || content.toLowerCase().includes('video')) {
-            setTimeout(async () => {
+            // Trigger auto-generation immediately after response
+            (async () => {
               try {
                 const brief = await generateCreativeBrief(content);
                 if (brief) {
@@ -286,7 +287,7 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
               } catch (error) {
                 console.error('Auto-generation error:', error);
               }
-            }, 1000);
+            })();
           }
         } else {
           throw new Error(data.error || 'Failed to send message');

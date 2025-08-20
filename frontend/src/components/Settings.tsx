@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Save, Eye, EyeOff, Key, Server, Globe } from 'lucide-react';
+import { Save, Eye, EyeOff, Key, Server, Globe, X } from 'lucide-react';
 
 interface SettingsData {
   geminiApiKey: string;
@@ -12,9 +12,10 @@ interface SettingsData {
 interface SettingsProps {
   onSettingsChange: (settings: SettingsData) => void;
   currentSettings: SettingsData;
+  onClose: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ onSettingsChange, currentSettings }) => {
+const Settings: React.FC<SettingsProps> = ({ onSettingsChange, currentSettings, onClose }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [settings, setSettings] = useState<SettingsData>(currentSettings);
   const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
@@ -44,13 +45,21 @@ const Settings: React.FC<SettingsProps> = ({ onSettingsChange, currentSettings }
       localStorage.setItem('kijko_settings', JSON.stringify(settings));
       onSettingsChange(settings);
       setSaveMessage('Settings saved successfully!');
-      setTimeout(() => setSaveMessage(''), 3000);
+      // Clear message after 3 seconds using useEffect instead of setTimeout
     } catch (error) {
       console.error('Error saving settings:', error);
       setSaveMessage('Error saving settings');
-      setTimeout(() => setSaveMessage(''), 3000);
+      // Clear message after 3 seconds using useEffect instead of setTimeout
     }
   };
+
+  // Clear save message after 3 seconds
+  React.useEffect(() => {
+    if (saveMessage) {
+      const timer = setTimeout(() => setSaveMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveMessage]);
 
   const togglePasswordVisibility = (field: string) => {
     setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
@@ -96,28 +105,33 @@ const Settings: React.FC<SettingsProps> = ({ onSettingsChange, currentSettings }
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-      {/* Header */}
-      <div 
-        className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-600 cursor-pointer flex items-center justify-between"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        <div className="flex items-center space-x-3">
-          <Key className="w-5 h-5 text-white" />
-          <h2 className="text-xl font-semibold text-white">API Settings & Configuration</h2>
-        </div>
-        <div className="flex items-center space-x-2">
-          {saveMessage && (
-            <span className="text-sm text-green-100 bg-green-600 px-2 py-1 rounded">
-              {saveMessage}
-            </span>
-          )}
-          {isCollapsed ? (
-            <ChevronDown className="w-5 h-5 text-white" />
-          ) : (
-            <ChevronUp className="w-5 h-5 text-white" />
-          )}
-        </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div 
+          className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-600 cursor-pointer flex items-center justify-between"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <div className="flex items-center space-x-3">
+            <Key className="w-5 h-5 text-white" />
+            <h2 className="text-xl font-semibold text-white">API Settings & Configuration</h2>
+          </div>
+          <div className="flex items-center space-x-2">
+            {saveMessage && (
+              <span className="text-sm text-green-100 bg-green-600 px-2 py-1 rounded">
+                {saveMessage}
+              </span>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="text-white hover:text-gray-200 p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
       </div>
 
       {/* Content */}
@@ -183,14 +197,13 @@ const Settings: React.FC<SettingsProps> = ({ onSettingsChange, currentSettings }
             <div className="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono">
               <div>GEMINI_API_KEY={settings.geminiApiKey || 'your_gemini_api_key_here'}</div>
               <div>OPENAI_API_KEY={settings.openaiApiKey || 'your_openai_api_key_here'}</div>
-              <div>ANTHROPIC_API_KEY={settings.anthropicApiKey || 'your_anthropic_api_key_here'}</div>
-              <div>ELEVENLABS_API_KEY={settings.elevenLabsApiKey || 'your_elevenlabs_api_key_here'}</div>
               <div>PORT=3001</div>
               <div>NODE_ENV=development</div>
             </div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

@@ -122,35 +122,8 @@ export const generateImage = async (prompt, config = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.warn('⚠️ Imagen API returned error, using placeholder:', errorData.error?.message);
-      
-      // Return a high-quality placeholder if API fails
-      return {
-        image: 'data:image/svg+xml;base64,' + Buffer.from(`
-          <svg width="1024" height="576" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#667eea" />
-                <stop offset="100%" stop-color="#764ba2" />
-              </linearGradient>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grad1)"/>
-            <text x="50%" y="45%" fill="white" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="24" font-weight="bold">
-              Storyboard Frame
-            </text>
-            <text x="50%" y="55%" fill="rgba(255,255,255,0.8)" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="16">
-              ${prompt.substring(0, 80)}${prompt.length > 80 ? '...' : ''}
-            </text>
-            <circle cx="50" cy="50" r="20" fill="rgba(255,255,255,0.1)"/>
-            <circle cx="974" cy="50" r="20" fill="rgba(255,255,255,0.1)"/>
-            <circle cx="50" cy="526" r="20" fill="rgba(255,255,255,0.1)"/>
-            <circle cx="974" cy="526" r="20" fill="rgba(255,255,255,0.1)"/>
-          </svg>
-        `).toString('base64'),
-        prompt: prompt,
-        status: 'placeholder',
-        reason: errorData.error?.message || 'API unavailable'
-      };
+      console.error('❌ Imagen API error:', errorData.error?.message);
+      throw new Error(`Imagen API error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
@@ -168,33 +141,7 @@ export const generateImage = async (prompt, config = {}) => {
     
   } catch (error) {
     console.error('❌ Imagen generation error:', error.message);
-    
-    // Return enhanced placeholder on error
-    return {
-      image: 'data:image/svg+xml;base64,' + Buffer.from(`
-        <svg width="1024" height="576" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#667eea" />
-              <stop offset="100%" stop-color="#764ba2" />
-            </linearGradient>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grad1)"/>
-          <text x="50%" y="40%" fill="white" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
-            🎬 Storyboard Frame
-          </text>
-          <text x="50%" y="55%" fill="rgba(255,255,255,0.9)" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="16">
-            ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}
-          </text>
-          <text x="50%" y="70%" fill="rgba(255,255,255,0.6)" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="12">
-            Preview Mode - Powered by Kijko AI
-          </text>
-        </svg>
-      `).toString('base64'),
-      prompt: prompt,
-      status: 'placeholder',
-      reason: error.message
-    };
+    throw error;
   }
 };
 
@@ -226,20 +173,8 @@ export const generateVideo = async (prompt, config = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.warn('⚠️ Veo API returned error, using placeholder:', errorData.error?.message);
-      
-      // Return placeholder video info
-      return {
-        video: {
-          url: generatePlaceholderVideo(prompt, config),
-          duration: config.duration_seconds || 5,
-          status: 'placeholder',
-          thumbnail: generateVideoThumbnail(prompt)
-        },
-        prompt: prompt,
-        config: config,
-        reason: errorData.error?.message || 'API unavailable'
-      };
+      console.error('❌ Veo API error:', errorData.error?.message);
+      throw new Error(`Veo API error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
@@ -275,75 +210,11 @@ export const generateVideo = async (prompt, config = {}) => {
     
   } catch (error) {
     console.error('❌ Veo generation error:', error.message);
-    
-    // Return enhanced placeholder on error
-    return {
-      video: {
-        url: generatePlaceholderVideo(prompt, config),
-        duration: config.duration_seconds || 5,
-        status: 'placeholder',
-        thumbnail: generateVideoThumbnail(prompt)
-      },
-      prompt: prompt,
-      config: config,
-      reason: error.message
-    };
+    throw error;
   }
 };
 
-/**
- * Generate placeholder video data URL
- */
-const generatePlaceholderVideo = (prompt, config) => {
-  // For MVP, we create an animated SVG that serves as a video placeholder
-  const svg = `
-    <svg width="1280" height="720" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#667eea" />
-          <stop offset="100%" stop-color="#764ba2" />
-        </linearGradient>
-        <animate id="colorAnim" attributeName="stop-color" values="#667eea;#764ba2;#667eea" dur="3s" repeatCount="indefinite"/>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#grad)"/>
-      <circle cx="640" cy="360" r="100" fill="rgba(255,255,255,0.1)">
-        <animate attributeName="r" values="80;120;80" dur="2s" repeatCount="indefinite"/>
-      </circle>
-      <text x="50%" y="40%" fill="white" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="bold">
-        🎬 Video Preview
-      </text>
-      <text x="50%" y="65%" fill="rgba(255,255,255,0.9)" text-anchor="middle" font-family="Arial, sans-serif" font-size="18">
-        ${prompt.substring(0, 80)}${prompt.length > 80 ? '...' : ''}
-      </text>
-      <text x="50%" y="75%" fill="rgba(255,255,255,0.7)" text-anchor="middle" font-family="Arial, sans-serif" font-size="14">
-        Duration: ${config.duration_seconds || 5}s - Powered by Kijko AI
-      </text>
-    </svg>
-  `;
-  return 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
-};
 
-/**
- * Generate video thumbnail
- */
-const generateVideoThumbnail = (prompt) => {
-  const svg = `
-    <svg width="320" height="180" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="thumbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#667eea" />
-          <stop offset="100%" stop-color="#764ba2" />
-        </linearGradient>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#thumbGrad)"/>
-      <polygon points="120,65 120,115 160,90" fill="white" opacity="0.8"/>
-      <text x="50%" y="70%" fill="white" text-anchor="middle" font-family="Arial, sans-serif" font-size="12">
-        ${prompt.substring(0, 30)}...
-      </text>
-    </svg>
-  `;
-  return 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
-};
 
 /**
  * Generate structured JSON response using Gemini 2.0 Flash

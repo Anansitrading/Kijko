@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Kijko AI Video Production
+Comment=Launch Kijko AI Video Production Platform
+Exec=/home/david/Projects/Kijko/kijko-clean/launch-kijko.sh
+Icon=/home/david/Projects/Kijko/kijko-clean/kijko-icon.png
+Terminal=true
+StartupNotify=true
+Categories=Development;AudioVideo;Graphics;
+Keywords=AI;Video;Production;Gemini;
+Path=/home/david/Projects/Kijko/kijko-clean
+StartupWMClass=Kijko

@@ -150,6 +150,34 @@ router.post('/analyze', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * Test Gemini API connectivity
+ * GET /api/chat/test
+ */
+router.get('/test', asyncHandler(async (req, res) => {
+  try {
+    const testSession = await createChatSession(KIJKO_SYSTEM_PROMPT);
+    const testResponse = await testSession.send_message("Hello, please respond with 'Gemini API is working correctly' to confirm connectivity.");
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Gemini API connectivity test successful',
+        response: testResponse.text,
+        usage: testResponse.usage,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Gemini API test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Gemini API connectivity test failed',
+      details: error.message
+    });
+  }
+}));
+
+/**
  * Start new chat session
  * POST /api/chat/session
  */

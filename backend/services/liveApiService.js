@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import WebSocket from 'ws';
 import dotenv from 'dotenv';
+import { createChatSession } from './geminiService.js';
+import { KIJKO_SYSTEM_PROMPT } from '../config/prompts.js';
 
 dotenv.config();
 
@@ -103,8 +105,9 @@ class LiveApiService {
         ...config
       };
 
-      // In a full implementation, we would create an actual WebSocket connection
-      // to Google's Live API. For the MVP, we'll simulate the session structure
+      // Create Gemini chat session to back this live session
+      const chatSession = await createChatSession(KIJKO_SYSTEM_PROMPT);
+
       const liveSession = {
         sessionId,
         config: defaultConfig,
@@ -113,7 +116,8 @@ class LiveApiService {
         lastActivity: new Date().toISOString(),
         messageHistory: [],
         // Placeholder for actual Live API connection
-        connection: null
+        connection: null,
+        chatSession
       };
 
       this.activeSessions.set(sessionId, liveSession);
@@ -140,27 +144,40 @@ class LiveApiService {
       // Update session activity
       session.lastActivity = new Date().toISOString();
 
-      // Process different types of input
+      // Process different types of input (text only for now)
       const processedInput = this.processInput(input);
-      
-      // Add to message history
+
+      // Ensure we have a chat session (create if missing)
+      if (!session.chatSession) {
+        session.chatSession = await createChatSession(KIJKO_SYSTEM_PROMPT);
+      }
+
+      // Add user message to history
       session.messageHistory.push({
         timestamp: new Date().toISOString(),
         type: 'user',
         content: processedInput
       });
 
-      // In a full implementation, this would send to the actual Live API
-      // For MVP, we'll simulate the real-time processing
-      const response = await this.simulateLiveResponse(processedInput, session);
+      // Send to Gemini chat session (non-streaming for WS MVP)
+      const result = await session.chatSession.send_message(
+        processedInput.type === 'text' ? processedInput.content : '[non-text input received]'
+      );
 
+      const respObj = {
+        type: 'text',
+        content: result.text,
+        usage: result.usage
+      };
+
+      // Add assistant response to history
       session.messageHistory.push({
         timestamp: new Date().toISOString(),
         type: 'assistant',
-        content: response
+        content: respObj
       });
 
-      return response;
+      return respObj;
 
     } catch (error) {
       console.error('Realtime input error:', error);
@@ -203,47 +220,7 @@ class LiveApiService {
     return { type: 'text', content: 'Unknown input type' };
   }
 
-  /**
-   * Simulate live response processing (for MVP)
-   * In production, this would be handled by the actual Live API
-   */
-  async simulateLiveResponse(input, session) {
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 500));
 
-    const responses = {
-      text: {
-        greeting: "Hello! I'm Kijko, your AI video production assistant. I'm here to help you create amazing videos. What kind of video would you like to make today?",
-        creative_brief: "I can help you develop a creative brief for your video. Tell me about your vision - what's the main goal, who's your audience, and what style are you aiming for?",
-        storyboard: "Great! Let's create a storyboard for your video. I'll break this down into key scenes and generate visual frames for each one.",
-        feedback: "I understand your feedback. Let me help you refine the video concept based on your suggestions.",
-        default: "I'm listening and ready to help with your video production needs. What would you like to work on?"
-      }
-    };
-
-    // Simple response selection based on input content
-    if (input.type === 'text') {
-      const content = input.content.toLowerCase();
-      
-      if (content.includes('hello') || content.includes('hi')) {
-        return { type: 'text', content: responses.text.greeting };
-      }
-      
-      if (content.includes('brief') || content.includes('concept')) {
-        return { type: 'text', content: responses.text.creative_brief };
-      }
-      
-      if (content.includes('storyboard') || content.includes('scenes')) {
-        return { type: 'text', content: responses.text.storyboard };
-      }
-      
-      if (content.includes('feedback') || content.includes('change')) {
-        return { type: 'text', content: responses.text.feedback };
-      }
-    }
-
-    return { type: 'text', content: responses.text.default };
-  }
 
   /**
    * Get live session information

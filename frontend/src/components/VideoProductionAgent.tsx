@@ -1,35 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, 
-  Mic, 
-  MicOff, 
-  Upload, 
-  X, 
-  Sparkles, 
-  Play, 
-  Edit2, 
-  Check, 
-  Settings, 
-  Volume2, 
-  VolumeX, 
-  Grid, 
-  Plus, 
-  Video, 
-  Image as ImageIcon, 
-  Search,
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Send,
+  Mic,
+  MicOff,
+  Plus,
+  Sparkles,
+  Grid,
   AlertCircle,
   Wifi,
   WifiOff,
-  Key
+  Key,
+  Video,
+  Upload,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { useKijko } from '../context/KijkoContext';
 import StoryboardView from './StoryboardView';
-import SettingsPanel from './SettingsPanel';
-import ExploreWall from './ExploreWall';
 import Settings from './Settings';
+import ExploreWall from './ExploreWall';
 import CloseButton from './CloseButton';
 
-export default function VideoProductionAgent() {
+function VideoProductionAgent() {
   const { state, dispatch, sendMessage, setApiKey, connectWebSocket } = useKijko();
   const [inputMessage, setInputMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -52,12 +43,7 @@ export default function VideoProductionAgent() {
     scrollToBottom();
   }, [state.messages, state.streamingMessage]);
 
-  // Auto-show API key input if not set
-  useEffect(() => {
-    if (!state.apiKey && !showApiKeyInput) {
-      setShowApiKeyInput(true);
-    }
-  }, [state.apiKey, showApiKeyInput]);
+  // API key is optional - backend has its own key configured
 
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
@@ -94,10 +80,6 @@ export default function VideoProductionAgent() {
     }
   };
 
-  const handleAppClose = () => {
-    // This will trigger the close confirmation modal
-    console.log('Application close requested');
-  };
 
   const formatTime = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -209,7 +191,7 @@ export default function VideoProductionAgent() {
                 onClick={() => dispatch({ type: 'TOGGLE_SETTINGS' })}
                 className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
-                <Settings className="w-5 h-5 text-white/70" />
+                <SettingsIcon className="w-5 h-5 text-white/70" />
               </button>
               
               <button
@@ -320,8 +302,7 @@ export default function VideoProductionAgent() {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={state.apiKey ? "Describe the video you want to create..." : "Set your API key first to start creating videos..."}
-                  disabled={!state.apiKey}
+                  placeholder="Describe the video you want to create..."
                   className="w-full bg-transparent text-white placeholder-white/40 outline-none resize-none disabled:opacity-50"
                   rows={1}
                   style={{ minHeight: '24px', maxHeight: '120px' }}
@@ -355,27 +336,29 @@ export default function VideoProductionAgent() {
               
               <button
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || !state.apiKey || state.isProcessing}
+                disabled={!inputMessage.trim() || state.isProcessing}
                 className="p-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
                 <Send className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            {!state.apiKey && (
-              <div className="mt-3 flex items-center gap-2 text-yellow-300/80">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">
-                  API key required to access Gemini AI features. 
-                  <button 
-                    onClick={() => setShowApiKeyInput(true)}
-                    className="underline hover:text-yellow-300 ml-1"
-                  >
-                    Set it now
-                  </button>
-                </span>
-              </div>
-            )}
+            <div className="mt-3 flex items-center gap-2 text-blue-300/80">
+              <span className="text-sm">
+                💡 Powered by Gemini AI.
+                {!state.apiKey && (
+                  <>
+                    <button
+                      onClick={() => setShowApiKeyInput(true)}
+                      className="underline hover:text-blue-300 ml-1"
+                    >
+                      Add custom API key
+                    </button>
+                    {" "}for advanced features.
+                  </>
+                )}
+              </span>
+            </div>
 
             {state.currentProject && (
               <div className="mt-3 flex items-center gap-2 text-white/60">
@@ -391,23 +374,22 @@ export default function VideoProductionAgent() {
 
       {/* Settings Panel */}
       {state.showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <Settings 
-              currentSettings={settingsData}
-              onSettingsChange={handleSettingsChange}
-            />
-          </div>
-        </div>
+        <Settings 
+          currentSettings={settingsData}
+          onSettingsChange={handleSettingsChange}
+          onClose={() => dispatch({ type: 'TOGGLE_SETTINGS' })}
+        />
       )}
 
       {/* Explore Wall */}
       {state.showExploreWall && (
-        <ExploreWall />
+        <ExploreWall onClose={() => dispatch({ type: 'TOGGLE_EXPLORE_WALL' })} />
       )}
 
       {/* Close Button */}
-      <CloseButton onClose={handleAppClose} />
+      <CloseButton />
     </div>
   );
 }
+
+export default VideoProductionAgent;

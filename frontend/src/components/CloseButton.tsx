@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Power, AlertTriangle, CheckCircle } from 'lucide-react';
+import { X, Power, AlertTriangle } from 'lucide-react';
 
 interface CloseButtonProps {
   onClose?: () => void;
@@ -36,9 +36,6 @@ const CloseButton: React.FC<CloseButtonProps> = ({ onClose }) => {
 
       // Step 3: Clear local storage if needed (optional)
       setShutdownStatus(prev => [...prev, 'Clearing temporary data...']);
-      // Only clear temporary data, keep settings
-      const settingsToKeep = localStorage.getItem('kijko_settings');
-      const apiKeyToKeep = localStorage.getItem('kijko_gemini_api_key');
       
       // Clear other temporary data but preserve important settings
       Object.keys(localStorage).forEach(key => {
@@ -51,16 +48,15 @@ const CloseButton: React.FC<CloseButtonProps> = ({ onClose }) => {
 
       // Step 4: Final cleanup
       setShutdownStatus(prev => [...prev, 'Finalizing shutdown...']);
-      
-      // Simulate cleanup time
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       setShutdownStatus(prev => [...prev, '✅ Application ready to close']);
       setShutdownStatus(prev => [...prev, 'You can safely close this window now.']);
 
       // Call the onClose callback if provided
       if (onClose) {
         onClose();
+      } else {
+        // Close the window/tab
+        window.close();
       }
 
     } catch (error) {
@@ -68,6 +64,7 @@ const CloseButton: React.FC<CloseButtonProps> = ({ onClose }) => {
       setShutdownStatus(prev => [...prev, '❌ Error during shutdown, but safe to close']);
     } finally {
       setIsClosing(false);
+      setShowConfirmation(false); // Reset confirmation dialog
     }
   };
 

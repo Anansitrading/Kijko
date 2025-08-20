@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Kijko Quick Launcher
+# Usage: ./kijko [dev|prod|stop|status]
+
+KIJKO_DIR="/home/david/Projects/Kijko/kijko-clean"
+
+case "$1" in
+    "dev"|"development")
+        echo "🎬 Starting Kijko in Development Mode..."
+        cd "$KIJKO_DIR"
+        ./launch-kijko.sh
+        ;;
+    "prod"|"production"|"docker")
+        echo "🎬 Starting Kijko in Production Mode (Docker)..."
+        cd "$KIJKO_DIR"
+        ./launch-kijko-docker.sh
+        ;;
+    "stop")
+        echo "🛑 Stopping Kijko..."
+        cd "$KIJKO_DIR"
+        # Stop development servers
+        pkill -f "node.*backend/server.js" 2>/dev/null
+        pkill -f "vite.*frontend" 2>/dev/null
+        # Stop Docker containers
+        docker-compose down 2>/dev/null
+        echo "✅ Kijko stopped"
+        ;;
+    "status")
+        echo "📊 Kijko Status:"
+        cd "$KIJKO_DIR"
+        echo ""
+        echo "Development servers:"
+        if pgrep -f "node.*backend/server.js" > /dev/null; then
+            echo "  ✅ Backend running (PID: $(pgrep -f 'node.*backend/server.js'))"
+        else
+            echo "  ❌ Backend not running"
+        fi
+        if pgrep -f "vite.*frontend" > /dev/null; then
+            echo "  ✅ Frontend running (PID: $(pgrep -f 'vite.*frontend'))"
+        else
+            echo "  ❌ Frontend not running"
+        fi
+        echo ""
+        echo "Docker containers:"
+        if docker-compose ps 2>/dev/null | grep -q "Up"; then
+            docker-compose ps
+        else
+            echo "  ❌ No Docker containers running"
+        fi
+        ;;
+    "help"|"-h"|"--help"|"")
+        echo "🎬 Kijko AI Video Production Platform"
+        echo ""
+        echo "Usage: $0 [command]"
+        echo ""
+        echo "Commands:"
+        echo "  dev, development    Start in development mode (npm/node)"
+        echo "  prod, production    Start in production mode (Docker)"
+        echo "  stop               Stop all Kijko services"
+        echo "  status             Show status of all services"
+        echo "  help               Show this help message"
+        echo ""
+        echo "Examples:"
+        echo "  $0 dev             # Start development server"
+        echo "  $0 prod            # Start production containers"
+        echo "  $0 stop            # Stop everything"
+        echo "  $0 status          # Check what's running"
+        ;;
+    *)
+        echo "❌ Unknown command: $1"
+        echo "Run '$0 help' for usage information"
+        exit 1
+        ;;
+esac
