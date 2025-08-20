@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white;
+    @apply min-h-screen antialiased;
+  }
+}
+
+@layer components {
+  .glass-effect {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+  
+  .button-primary {
+    @apply px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 transition-opacity;
+    @apply text-white font-medium;
+  }
+  
+  .button-secondary {
+    @apply px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors;
+    @apply text-white/70 border border-white/10;
+  }
+  
+  .input-field {
+    @apply w-full bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-3 py-2;
+    @apply text-white placeholder-white/40 outline-none focus:border-purple-500/50 transition-colors;
+  }
+  
+  .chat-message-user {
+    @apply bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30;
+  }
+  
+  .chat-message-agent {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+}
