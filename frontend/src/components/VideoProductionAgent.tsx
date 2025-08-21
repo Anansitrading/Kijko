@@ -12,7 +12,8 @@ import {
   Key,
   Video,
   Upload,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useKijko } from '../context/KijkoContext';
 import StoryboardView from './StoryboardView';
@@ -21,7 +22,16 @@ import ExploreWall from './ExploreWall';
 import CloseButton from './CloseButton';
 
 function VideoProductionAgent() {
-  const { state, dispatch, sendMessage, setApiKey, connectWebSocket } = useKijko();
+  const {
+    state,
+    dispatch,
+    sendMessage,
+    setApiKey,
+    connectWebSocket,
+    updateStoryboardFrame,
+    regenerateFrameImage,
+    generateStoryboard
+  } = useKijko();
   const [inputMessage, setInputMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -274,9 +284,57 @@ function VideoProductionAgent() {
             </div>
           )}
           
+          {/* Generate Storyboard Button */}
+          {state.messages.length > 0 && state.storyboardFrames.length === 0 && !state.isProcessing && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={async () => {
+                  try {
+                    // Create test scenes for now - in production this would come from the chat
+                    const testScenes = [
+                      {
+                        id: 1,
+                        title: "Opening Scene",
+                        description: "A dimly lit room with four cats sitting around a green felt poker table. One cat wears a visor, another has a monocle.",
+                        duration: 3,
+                        visual_elements: ["cinematic lighting", "poker table", "cats in costumes"]
+                      },
+                      {
+                        id: 2,
+                        title: "The Deal",
+                        description: "Close-up of cat paws dealing cards. Cards flying through the air in slow motion.",
+                        duration: 2,
+                        visual_elements: ["close-up", "slow motion", "playing cards"]
+                      },
+                      {
+                        id: 3,
+                        title: "The Bluff",
+                        description: "One cat pushes all chips forward with a confident expression while others look surprised.",
+                        duration: 3,
+                        visual_elements: ["dramatic close-up", "poker chips", "cat expressions"]
+                      }
+                    ];
+                    await generateStoryboard(testScenes);
+                  } catch (error) {
+                    console.error('Error generating storyboard:', error);
+                  }
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 flex items-center gap-2"
+              >
+                <ImageIcon className="w-4 h-4" />
+                Generate Storyboard Images
+              </button>
+            </div>
+          )}
+
           {/* Storyboard Frames */}
           {state.storyboardFrames.length > 0 && (
-            <StoryboardView frames={state.storyboardFrames} />
+            <StoryboardView
+              frames={state.storyboardFrames}
+              storyboardId={state.currentProject?.storyboard?.id}
+              onUpdateFrame={updateStoryboardFrame}
+              onRegenerateFrame={regenerateFrameImage}
+            />
           )}
           
           {state.isProcessing && (

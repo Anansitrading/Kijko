@@ -128,6 +128,8 @@ interface KijkoContextType {
   generateVRD: (userInput: string) => Promise<any>;
   generateStoryboard: (scenes: any[]) => Promise<any>;
   generateVideo: (frames: any[]) => Promise<any>;
+  updateStoryboardFrame: (frameId: number, updates: any) => Promise<void>;
+  regenerateFrameImage: (frameId: number) => Promise<void>;
   setApiKey: (apiKey: string) => void;
   connectWebSocket: () => void;
 }
@@ -272,23 +274,7 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
           };
           dispatch({ type: 'ADD_MESSAGE', payload: agentMessage });
 
-          // Auto-generate content based on keywords
-          if (content.toLowerCase().includes('brief') || content.toLowerCase().includes('create') || content.toLowerCase().includes('video')) {
-            // Trigger auto-generation immediately after response
-            (async () => {
-              try {
-                const brief = await generateCreativeBrief(content);
-                if (brief) {
-                  const vrd = await generateVRD(brief);
-                  if (vrd && vrd.scenes) {
-                    await generateStoryboard(vrd.scenes);
-                  }
-                }
-              } catch (error) {
-                console.error('Auto-generation error:', error);
-              }
-            })();
-          }
+          // Auto-generation removed - user should explicitly request storyboard generation
         } else {
           throw new Error(data.error || 'Failed to send message');
         }
@@ -470,6 +456,84 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateStoryboardFrame = async (frameId: number, updates: any) => {
+    try {
+      if (!state.currentProject?.storyboard?.id) {
+        throw new Error('No storyboard found');
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/storyboard/${state.currentProject.storyboard.id}/frame/${frameId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.apiKey}`
+        },
+        body: JSON.stringify(updates),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the frame in the current storyboard frames
+        const updatedFrames = state.storyboardFrames.map(frame =>
+          frame.scene_id === frameId ? { ...frame, ...data.data } : frame
+        );
+        dispatch({ type: 'SET_STORYBOARD_FRAMES', payload: updatedFrames });
+
+        // Update the project storyboard
+        if (state.currentProject) {
+          const updatedProject = {
+            ...state.currentProject,
+            storyboard: {
+              ...state.currentProject.storyboard,
+              frames: updatedFrames
+            }
+          };
+          dispatch({ type: 'SET_CURRENT_PROJECT', payload: updatedProject });
+        }
+      } else {
+        throw new Error(data.error || 'Failed to update frame');
+      }
+    } catch (error) {
+      console.error('Error updating frame:', error);
+      throw error;
+    }
+  };
+
+  const regenerateFrameImage = async (frameId: number) => {
+    try {
+      if (!state.currentProject?.storyboard?.id) {
+        throw new Error('No storyboard found');
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/storyboard/${state.currentProject.storyboard.id}/generate-images`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.apiKey}`
+        },
+        body: JSON.stringify({
+          frameIds: [frameId],
+          aspectRatio: '16:9'
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the frames with the regenerated image
+        const updatedFrames = state.storyboardFrames.map(frame => {
+          const updatedFrame = data.data.updated_frames?.find((f: any) => f.scene_id === frame.scene_id);
+          return updatedFrame ? { ...frame, ...updatedFrame } : frame;
+        });
+        dispatch({ type: 'SET_STORYBOARD_FRAMES', payload: updatedFrames });
+      } else {
+        throw new Error(data.error || 'Failed to regenerate image');
+      }
+    } catch (error) {
+      console.error('Error regenerating image:', error);
+      throw error;
+    }
+  };
+
   const contextValue: KijkoContextType = {
     state,
     dispatch,
@@ -478,6 +542,8 @@ export function KijkoProvider({ children }: { children: React.ReactNode }) {
     generateVRD,
     generateStoryboard,
     generateVideo,
+    updateStoryboardFrame,
+    regenerateFrameImage,
     setApiKey,
     connectWebSocket,
   };

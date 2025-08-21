@@ -1,11 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import { generateImageWithFal, getRecommendedModel } from './falService.js';
 
 dotenv.config();
 
 let geminiClient = null;
-let vertexAIClient = null;
 
 // Initialize Gemini clients for different services
 const initializeGemini = () => {
@@ -15,10 +15,9 @@ const initializeGemini = () => {
   }
 
   try {
-    // Standard Gemini client for text generation
+    // Standard Gemini client for text generation and image generation
     geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    
-    // For now, we'll use REST API calls for Imagen and Veo since they might need Vertex AI
+
     console.log('✅ Gemini client initialized successfully');
     return geminiClient;
   } catch (error) {
@@ -29,6 +28,20 @@ const initializeGemini = () => {
 
 // Initialize on module load
 geminiClient = initializeGemini();
+
+/**
+ * Map aspect ratio to fal.ai image size format
+ */
+const mapAspectRatioToSize = (aspectRatio) => {
+  const sizeMap = {
+    '1:1': 'square_hd',
+    '16:9': 'landscape_16_9',
+    '9:16': 'portrait_16_9',
+    '4:3': 'landscape_4_3',
+    '3:4': 'portrait_4_3'
+  };
+  return sizeMap[aspectRatio] || 'landscape_16_9';
+};
 
 /**
  * Generate content using Gemini 2.0 Flash (latest model)
@@ -97,51 +110,149 @@ export const generateContentStream = async function* (prompt, config = {}) {
 };
 
 /**
- * Generate images using Gemini Imagen 3.0
- * Uses Google AI Studio API for image generation
+ * Generate images using fal.ai (primary) with Imagen fallback
+ * Provides multiple model options and better availability
  */
 export const generateImage = async (prompt, config = {}) => {
   console.log('🎨 Image generation requested:', prompt);
-  
+  console.log('🔧 Config:', config);
+
+  // Try fal.ai first (primary service)
+  if (process.env.FAL_KEY) {
+    try {
+      console.log('🚀 Using fal.ai for image generation...');
+
+      // Map common config parameters to fal.ai format
+      const falConfig = {
+        model: config.model || getRecommendedModel(config.useCase || 'balanced'),
+        numberOfImages: config.numberOfImages || config.number_of_images || 1,
+        imageSize: mapAspectRatioToSize(config.aspectRatio || config.aspect_ratio || '16:9'),
+        seed: config.seed,
+        guidanceScale: config.guidanceScale,
+        numInferenceSteps: config.numInferenceSteps,
+        enableSafetyChecker: config.enableSafetyChecker !== false
+      };
+
+      const result = await generateImageWithFal(prompt, falConfig);
+
+      if (result.status === 'generated') {
+        console.log('✅ Image generated successfully with fal.ai');
+        return result;
+      } else {
+        console.log('⚠️ fal.ai generation failed, trying Imagen fallback...');
+        // Continue to Imagen fallback
+      }
+    } catch (error) {
+      console.error('❌ fal.ai error:', error.message);
+      console.log('🔄 Falling back to Imagen API...');
+      // Continue to Imagen fallback
+    }
+  } else {
+    console.log('⚠️ FAL_KEY not found, using Imagen API...');
+  }
+
+  // Fallback to Imagen API
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('❌ Neither FAL_KEY nor GEMINI_API_KEY found');
+    throw new Error('No image generation API keys available');
+  }
+
   try {
-    // Use Google AI Studio API for Imagen 3.0
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImages?key=${process.env.GEMINI_API_KEY}`, {
+    console.log('🔄 Attempting Imagen API fallback...');
+
+    // Use the correct request format for Imagen API
+    const requestBody = {
+      instances: [
+        { prompt: prompt }
+      ],
+      parameters: {
+        sampleCount: config.numberOfImages || config.number_of_images || 1,
+        aspectRatio: config.aspectRatio || config.aspect_ratio || '16:9',
+        sampleImageSize: config.sampleImageSize || '1K', // '1K' or '2K'
+        personGeneration: config.personGeneration || config.person_generation || 'allow_adult',
+        includeRaiReason: config.includeRaiReason !== false
+      }
+    };
+
+    // Add seed if provided
+    if (config.seed) {
+      requestBody.parameters.seed = parseInt(config.seed);
+    }
+
+    console.log('📤 Imagen request body:', JSON.stringify(requestBody, null, 2));
+
+    // Use the correct Imagen 4.0 endpoint with :predict
+    const modelName = config.imagenModel || 'imagen-4.0-generate-001'; // Default to standard quality
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict`, {
       method: 'POST',
       headers: {
+        'x-goog-api-key': process.env.GEMINI_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        prompt: prompt,
-        number_of_images: config.number_of_images || 1,
-        aspect_ratio: config.aspect_ratio || '16:9',
-        safety_filter_level: config.safety_filter_level || 'block_some',
-        include_rai_reason: true,
-        output_mime_type: config.output_mime_type || 'image/jpeg'
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('❌ Imagen API error:', errorData.error?.message);
-      throw new Error(`Imagen API error: ${errorData.error?.message || 'Unknown error'}`);
+      const errorText = await response.text();
+      console.error('❌ Imagen API error response:', errorText);
+      throw new Error(`Imagen API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
-    
-    if (data.generated_images && data.generated_images.length > 0) {
-      return {
-        image: `data:${config.output_mime_type || 'image/jpeg'};base64,${data.generated_images[0].image}`,
-        prompt: prompt,
-        status: 'generated',
-        rai_reason: data.generated_images[0].rai_reason
-      };
+    console.log('📥 Imagen API Response structure:', Object.keys(data));
+
+    if (data.predictions && data.predictions.length > 0) {
+      const prediction = data.predictions[0];
+
+      if (prediction.image && prediction.image.imageBytes) {
+        console.log('✅ Image generated successfully with Imagen fallback');
+        return {
+          image: prediction.image.imageBytes, // Return base64 image data
+          prompt: prompt,
+          status: 'generated',
+          model: 'Imagen 4.0',
+          modelId: modelName,
+          rai_reason: prediction.raiReason || 'Image generated successfully with Imagen',
+          mime_type: 'image/png' // Imagen typically returns PNG
+        };
+      }
     }
-    
-    throw new Error('No images generated');
-    
+
+    throw new Error('No images generated in Imagen response');
+
   } catch (error) {
     console.error('❌ Imagen generation error:', error.message);
-    throw error;
+
+    // Determine the type of error for better user feedback
+    let errorType = 'api_error';
+    let userMessage = 'Image generation failed';
+
+    if (error.message.includes('billed users')) {
+      errorType = 'billing_required';
+      userMessage = 'Imagen API requires a billed Google Cloud account. Please enable billing to use image generation.';
+    } else if (error.message.includes('quota')) {
+      errorType = 'quota_exceeded';
+      userMessage = 'Image generation quota exceeded. Please try again later.';
+    } else if (error.message.includes('safety')) {
+      errorType = 'safety_filter';
+      userMessage = 'Image prompt was blocked by safety filters. Please try a different prompt.';
+    } else if (error.message.includes('PERMISSION_DENIED')) {
+      errorType = 'permission_denied';
+      userMessage = 'Permission denied. Please check your API key and project settings.';
+    }
+
+    console.log(`🔄 Falling back to placeholder image (${errorType})...`);
+
+    // Return a structured error response that the UI can handle appropriately
+    return {
+      image: null, // No actual image data
+      prompt: prompt,
+      status: 'error',
+      error_type: errorType,
+      rai_reason: userMessage,
+      mime_type: 'image/png',
+      technical_details: error.message // For debugging
+    };
   }
 };
 

@@ -1,11 +1,12 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { 
-  generateStructuredContent, 
+import {
+  generateStructuredContent,
   generateImage,
   generateStoryboardFrames
 } from '../services/geminiService.js';
+import { getAvailableModels } from '../services/falService.js';
 import { 
   STORYBOARD_PROMPT, 
   IMAGE_PROMPT_TEMPLATE 
@@ -15,6 +16,43 @@ const router = express.Router();
 
 // In-memory storage for MVP (use database in production)
 const storyboardStorage = new Map();
+
+/**
+ * Test image generation endpoint
+ * POST /api/storyboard/test-image
+ */
+router.post('/test-image', asyncHandler(async (req, res) => {
+  const { prompt = "A beautiful sunset over mountains" } = req.body;
+
+  try {
+    console.log('🧪 Testing image generation with prompt:', prompt);
+
+    const result = await generateImage(prompt, {
+      aspect_ratio: '16:9',
+      output_mime_type: 'image/jpeg'
+    });
+
+    res.json({
+      success: true,
+      data: {
+        prompt: result.prompt,
+        status: result.status,
+        hasImage: !!result.image,
+        imageLength: result.image ? result.image.length : 0,
+        rai_reason: result.rai_reason,
+        mime_type: result.mime_type
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Test image generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Image generation test failed',
+      details: error.message
+    });
+  }
+}));
 
 /**
  * Create storyboard from VRD scenes
@@ -66,6 +104,79 @@ router.post('/create', asyncHandler(async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to create storyboard',
+      details: error.message
+    });
+  }
+}));
+
+/**
+ * Get available image generation models
+ * GET /api/storyboard/models
+ */
+router.get('/models', asyncHandler(async (req, res) => {
+  try {
+    const models = getAvailableModels();
+
+    res.json({
+      success: true,
+      data: {
+        models: models,
+        default: 'flux-dev',
+        recommendations: {
+          fast: 'flux-schnell',
+          balanced: 'flux-dev',
+          quality: 'stable-diffusion-v35',
+          premium: 'imagen3'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting models:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get available models',
+      details: error.message
+    });
+  }
+}));
+
+/**
+ * Test different models
+ * POST /api/storyboard/test-model
+ */
+router.post('/test-model', asyncHandler(async (req, res) => {
+  const { prompt = "A beautiful landscape", model = "flux-dev" } = req.body;
+
+  try {
+    console.log(`🧪 Testing model ${model} with prompt:`, prompt);
+
+    const result = await generateImage(prompt, {
+      model: model,
+      aspect_ratio: '16:9',
+      output_mime_type: 'image/jpeg'
+    });
+
+    res.json({
+      success: true,
+      data: {
+        prompt: result.prompt,
+        model: result.model || model,
+        modelId: result.modelId,
+        status: result.status,
+        hasImage: !!result.image,
+        imageLength: result.image ? result.image.length : 0,
+        rai_reason: result.rai_reason,
+        mime_type: result.mime_type,
+        generation_time: result.generation_time,
+        imageUrl: result.imageUrl // CDN URL if available
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Model test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Model test failed',
       details: error.message
     });
   }
@@ -181,12 +292,17 @@ router.post('/:id/generate-images', asyncHandler(async (req, res) => {
 }));
 
 /**
- * Update storyboard frame
+ * Update storyboard frame with advanced image generation options
  * PUT /api/storyboard/:id/frame/:frameId
  */
 router.put('/:id/frame/:frameId', asyncHandler(async (req, res) => {
   const { id, frameId } = req.params;
-  const { description, prompt, regenerateImage = false } = req.body;
+  const {
+    description,
+    prompt,
+    regenerateImage = false,
+    imageConfig = {}
+  } = req.body;
 
   const storyboard = storyboardStorage.get(id);
   if (!storyboard) {
@@ -214,20 +330,39 @@ router.put('/:id/frame/:frameId', asyncHandler(async (req, res) => {
 
     // Regenerate image if requested
     if (regenerateImage) {
-      console.log(`🔄 Regenerating image for frame ${frameId}...`);
-      
-      const imagePrompt = `${updatedFrame.description}. Visual style: ${storyboard.visualStyle || 'professional cinematic'}. Cinematic composition, high quality.`;
-      
-      const generatedImage = await generateImage(imagePrompt, {
-        aspect_ratio: '16:9',
-        output_mime_type: 'image/jpeg'
-      });
+      console.log(`🔄 Regenerating image for frame ${frameId} with advanced config...`);
+
+      // Build enhanced image prompt
+      const visualStyle = imageConfig.visualStyle || storyboard.visualStyle || 'professional cinematic';
+      const imagePrompt = prompt || `${updatedFrame.description}. Visual style: ${visualStyle}. Cinematic composition, high quality.`;
+
+      // Prepare image generation config with all advanced parameters
+      const generationConfig = {
+        aspectRatio: imageConfig.aspectRatio || '16:9',
+        outputMimeType: 'image/jpeg',
+        numberOfImages: imageConfig.numberOfImages || 1,
+        safetyFilterLevel: imageConfig.safetyFilterLevel || 'block_medium_and_above',
+        personGeneration: imageConfig.personGeneration || 'allow_adult',
+        addWatermark: imageConfig.addWatermark !== false, // Default true
+        enhancePrompt: imageConfig.enhancePrompt || false,
+        includeRaiReason: true
+      };
+
+      // Add seed if provided and watermark is disabled
+      if (imageConfig.seed && imageConfig.addWatermark === false) {
+        generationConfig.seed = imageConfig.seed;
+      }
+
+      console.log('🎨 Generation config:', generationConfig);
+
+      const generatedImage = await generateImage(imagePrompt, generationConfig);
 
       updatedFrame = {
         ...updatedFrame,
         image: generatedImage.image,
         prompt: imagePrompt,
-        status: generatedImage.status
+        status: generatedImage.status,
+        imageConfig: generationConfig // Store the config used for this generation
       };
     }
 
