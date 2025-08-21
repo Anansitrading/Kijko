@@ -86,11 +86,26 @@ export default function EditFrameModal({ isOpen, onClose, frame, onSave }: EditF
     if (frame) {
       setDescription(frame.description || '');
       setPrompt(frame.prompt || '');
+      
+      // Reset advanced settings when frame changes
+      setShowAdvanced(false);
     }
   }, [frame]);
 
   const handleSave = async () => {
     if (!frame) return;
+    
+    // Store original values for rollback
+    const originalDescription = frame.description;
+    const originalPrompt = frame.prompt;
+    
+    // Basic validation - warn if both fields are empty but allow save
+    if (!description.trim() && !prompt.trim()) {
+      const proceed = window.confirm(
+        'Both description and prompt are empty. This may result in poor image generation. Continue anyway?'
+      );
+      if (!proceed) return;
+    }
     
     setIsSaving(true);
     try {
@@ -114,6 +129,14 @@ export default function EditFrameModal({ isOpen, onClose, frame, onSave }: EditF
       onClose();
     } catch (error) {
       console.error('Error saving frame:', error);
+      
+      // Rollback to original values on error
+      setDescription(originalDescription);
+      setPrompt(originalPrompt);
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to save changes: ${errorMessage}. Your changes have been reverted. Please try again.`);
     } finally {
       setIsSaving(false);
     }

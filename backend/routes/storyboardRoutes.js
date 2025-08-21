@@ -304,6 +304,30 @@ router.put('/:id/frame/:frameId', asyncHandler(async (req, res) => {
     imageConfig = {}
   } = req.body;
 
+  // Input validation
+  if (description !== undefined && typeof description !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'Description must be a string'
+    });
+  }
+  
+  if (prompt !== undefined && typeof prompt !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'Prompt must be a string'
+    });
+  }
+
+  // Ensure frameId is a valid number
+  const frameIdNum = parseInt(frameId, 10);
+  if (isNaN(frameIdNum)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid frame ID'
+    });
+  }
+
   const storyboard = storyboardStorage.get(id);
   if (!storyboard) {
     return res.status(404).json({
@@ -312,7 +336,7 @@ router.put('/:id/frame/:frameId', asyncHandler(async (req, res) => {
     });
   }
 
-  const frameIndex = storyboard.frames.findIndex(f => f.scene_id === parseInt(frameId));
+  const frameIndex = storyboard.frames.findIndex(f => f.scene_id === frameIdNum);
   if (frameIndex === -1) {
     return res.status(404).json({
       success: false,
@@ -320,11 +344,34 @@ router.put('/:id/frame/:frameId', asyncHandler(async (req, res) => {
     });
   }
 
+  // Create a backup for potential rollback
+  const storyboardBackup = JSON.parse(JSON.stringify(storyboard));
+  
   try {
+    // Start with the original frame data
+    const originalFrame = storyboard.frames[frameIndex];
+    
+    // Log the changes being made for debugging
+    console.log(`📝 Updating frame ${frameId}:`, {
+      oldDescription: originalFrame.description,
+      newDescription: description,
+      oldPrompt: originalFrame.prompt,
+      newPrompt: prompt,
+      regenerateImage,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Warn if trying to clear required fields  
+    if (description === '' || prompt === '') {
+      console.warn(`⚠️ Frame ${frameId}: Setting empty description or prompt`);
+    }
+
+    // Create a new frame object, applying updates from the request body
+    // Check for `undefined` to allow setting fields to empty strings or other falsy values
     let updatedFrame = {
-      ...storyboard.frames[frameIndex],
-      description: description || storyboard.frames[frameIndex].description,
-      prompt: prompt || storyboard.frames[frameIndex].prompt,
+      ...originalFrame,
+      description: description !== undefined ? description : originalFrame.description,
+      prompt: prompt !== undefined ? prompt : originalFrame.prompt,
       updatedAt: new Date().toISOString()
     };
 
@@ -332,9 +379,9 @@ router.put('/:id/frame/:frameId', asyncHandler(async (req, res) => {
     if (regenerateImage) {
       console.log(`🔄 Regenerating image for frame ${frameId} with advanced config...`);
 
-      // Build enhanced image prompt
+      // Use the newly updated prompt and description for regeneration
       const visualStyle = imageConfig.visualStyle || storyboard.visualStyle || 'professional cinematic';
-      const imagePrompt = prompt || `${updatedFrame.description}. Visual style: ${visualStyle}. Cinematic composition, high quality.`;
+      const imagePrompt = updatedFrame.prompt || `${updatedFrame.description}. Visual style: ${visualStyle}. Cinematic composition, high quality.`;
 
       // Prepare image generation config with all advanced parameters
       const generationConfig = {
@@ -354,29 +401,46 @@ router.put('/:id/frame/:frameId', asyncHandler(async (req, res) => {
       }
 
       console.log('🎨 Generation config:', generationConfig);
+      
+      try {
+        const generatedImage = await generateImage(imagePrompt, generationConfig);
 
-      const generatedImage = await generateImage(imagePrompt, generationConfig);
-
-      updatedFrame = {
-        ...updatedFrame,
-        image: generatedImage.image,
-        prompt: imagePrompt,
-        status: generatedImage.status,
-        imageConfig: generationConfig // Store the config used for this generation
-      };
+        // Merge the image generation results into the updatedFrame object
+        updatedFrame = {
+          ...updatedFrame,
+          image: generatedImage.image,
+          prompt: imagePrompt, // Ensure the prompt used for generation is saved
+          status: generatedImage.status,
+          imageConfig: generationConfig // Store the config used for this generation
+        };
+      } catch (imageError) {
+        console.error('Image generation failed, but saving text updates:', imageError);
+        // Still save the text updates even if image generation fails
+        updatedFrame = {
+          ...updatedFrame,
+          status: 'image_generation_failed',
+          error: imageError.message
+        };
+      }
     }
 
+    // Update the storyboard in the in-memory storage
     storyboard.frames[frameIndex] = updatedFrame;
     storyboard.metadata.updatedAt = new Date().toISOString();
-    
     storyboardStorage.set(id, storyboard);
 
+    // Send the fully updated frame back to the client
     res.json({
       success: true,
       data: updatedFrame
     });
 
   } catch (error) {
+    // Restore from backup on any error
+    if (storyboardBackup) {
+      storyboardStorage.set(id, storyboardBackup);
+    }
+    
     console.error('Frame update error:', error);
     res.status(500).json({
       success: false,
