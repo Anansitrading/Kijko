@@ -1,0 +1,17 @@
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+.yarnrc
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
+!out/**
+conductor/**
+handoff.md
+CLAUDE.md
+.claude/**
+**/*.vsix
+node_modules/**

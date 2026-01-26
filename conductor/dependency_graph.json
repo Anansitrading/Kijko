@@ -1,0 +1,259 @@
+{
+  "metadata": {
+    "project_name": "Multi-Agent Orchestration System",
+    "generated_at": "2026-01-25T00:00:00Z",
+    "abstraction_level": 2,
+    "total_nodes": 10,
+    "total_edges": 12,
+    "critical_path_length": 8,
+    "max_coupling": 0.67,
+    "detected_patterns": ["EventEmitter", "WebviewProvider", "Factory", "Singleton", "Orchestrator", "Observer"],
+    "plan_source": "MULTI_AGENT_ORCHESTRATION_PLAN.md"
+  },
+  "tasks": [
+    {
+      "id": "task_0_1",
+      "name": "Create Directory Structure",
+      "phase": 0,
+      "sequence": 1,
+      "type": "SEQUENTIAL",
+      "complexity": "low",
+      "wave": 0,
+      "dependencies": [],
+      "files_created": ["src/claude/", "src/claude/index.ts"],
+      "critical_path": true,
+      "parallelization_score": 0.0
+    },
+    {
+      "id": "task_0_2",
+      "name": "Create Types Module",
+      "phase": 0,
+      "sequence": 2,
+      "type": "SEQUENTIAL",
+      "complexity": "medium",
+      "wave": 0,
+      "dependencies": ["task_0_1"],
+      "files_created": ["src/claude/types.ts"],
+      "critical_path": true,
+      "parallelization_score": 0.0
+    },
+    {
+      "id": "task_1_1",
+      "name": "Create ClaudeProcess Module",
+      "phase": 1,
+      "sequence": 1,
+      "type": "SEQUENTIAL",
+      "complexity": "high",
+      "wave": 1,
+      "dependencies": ["task_0_2"],
+      "files_created": ["src/claude/claudeProcess.ts"],
+      "critical_path": true,
+      "parallelization_score": 0.0
+    },
+    {
+      "id": "task_1_2",
+      "name": "Update Agent Manager",
+      "phase": 1,
+      "sequence": 2,
+      "type": "SEQUENTIAL",
+      "complexity": "medium",
+      "wave": 1,
+      "dependencies": ["task_1_1"],
+      "files_modified": ["src/agentManager.ts"],
+      "critical_path": true,
+      "parallelization_score": 0.0
+    },
+    {
+      "id": "task_2_1",
+      "name": "Create Conductor Module",
+      "phase": 2,
+      "sequence": 1,
+      "type": "ASYNC",
+      "complexity": "high",
+      "wave": 2,
+      "dependencies": ["task_1_2"],
+      "files_created": ["src/claude/conductor.ts"],
+      "critical_path": true,
+      "parallelization_score": 0.5
+    },
+    {
+      "id": "task_2_2",
+      "name": "Create Ralph Module",
+      "phase": 2,
+      "sequence": 2,
+      "type": "ASYNC",
+      "complexity": "high",
+      "wave": 2,
+      "dependencies": ["task_1_2"],
+      "files_created": ["src/claude/ralph.ts"],
+      "critical_path": false,
+      "parallelization_score": 0.5
+    },
+    {
+      "id": "task_3_1",
+      "name": "Update ChatPanel",
+      "phase": 3,
+      "sequence": 1,
+      "type": "ASYNC",
+      "complexity": "medium",
+      "wave": 3,
+      "dependencies": ["task_2_1", "task_2_2"],
+      "files_modified": ["src/chatPanel.ts"],
+      "critical_path": true,
+      "parallelization_score": 0.3
+    },
+    {
+      "id": "task_3_2",
+      "name": "Update WebviewProvider",
+      "phase": 3,
+      "sequence": 2,
+      "type": "ASYNC",
+      "complexity": "medium",
+      "wave": 3,
+      "dependencies": ["task_3_1"],
+      "files_modified": ["src/webviewProvider.ts"],
+      "critical_path": false,
+      "parallelization_score": 0.3
+    },
+    {
+      "id": "task_4_1",
+      "name": "Update Extension Entry Point",
+      "phase": 4,
+      "sequence": 1,
+      "type": "SEQUENTIAL",
+      "complexity": "medium",
+      "wave": 4,
+      "dependencies": ["task_3_1", "task_3_2"],
+      "files_modified": ["src/extension.ts"],
+      "critical_path": true,
+      "parallelization_score": 0.0
+    },
+    {
+      "id": "task_4_2",
+      "name": "Update Package.json",
+      "phase": 4,
+      "sequence": 2,
+      "type": "SEQUENTIAL",
+      "complexity": "low",
+      "wave": 4,
+      "dependencies": ["task_4_1"],
+      "files_modified": ["package.json"],
+      "critical_path": true,
+      "parallelization_score": 0.0
+    }
+  ],
+  "edges": [
+    {"from": "task_0_1", "to": "task_0_2", "type": "sequential", "flow": "control"},
+    {"from": "task_0_2", "to": "task_1_1", "type": "provides_types", "flow": "data"},
+    {"from": "task_1_1", "to": "task_1_2", "type": "sequential", "flow": "control"},
+    {"from": "task_1_2", "to": "task_2_1", "type": "provides_agentManager", "flow": "data"},
+    {"from": "task_1_2", "to": "task_2_2", "type": "provides_agentManager", "flow": "data"},
+    {"from": "task_2_1", "to": "task_3_1", "type": "provides_conductor", "flow": "data"},
+    {"from": "task_2_2", "to": "task_3_1", "type": "provides_ralph", "flow": "data"},
+    {"from": "task_3_1", "to": "task_3_2", "type": "provides_chatPanel", "flow": "data"},
+    {"from": "task_3_1", "to": "task_4_1", "type": "UI_ready", "flow": "control"},
+    {"from": "task_3_2", "to": "task_4_1", "type": "UI_ready", "flow": "control"},
+    {"from": "task_4_1", "to": "task_4_2", "type": "sequential", "flow": "control"}
+  ],
+  "waves": [
+    {
+      "number": 0,
+      "type": "SEQUENTIAL",
+      "tasks": ["task_0_1", "task_0_2"],
+      "max_parallel_agents": 1,
+      "estimated_duration": "30 minutes"
+    },
+    {
+      "number": 1,
+      "type": "SEQUENTIAL",
+      "tasks": ["task_1_1", "task_1_2"],
+      "max_parallel_agents": 1,
+      "estimated_duration": "1 hour"
+    },
+    {
+      "number": 2,
+      "type": "ASYNC",
+      "tasks": ["task_2_1", "task_2_2"],
+      "max_parallel_agents": 2,
+      "estimated_duration": "1.5 hours (parallel)"
+    },
+    {
+      "number": 3,
+      "type": "ASYNC",
+      "tasks": ["task_3_1", "task_3_2"],
+      "max_parallel_agents": 2,
+      "estimated_duration": "1 hour (parallel)"
+    },
+    {
+      "number": 4,
+      "type": "SEQUENTIAL",
+      "tasks": ["task_4_1", "task_4_2"],
+      "max_parallel_agents": 1,
+      "estimated_duration": "45 minutes"
+    }
+  ],
+  "critical_path": [
+    "task_0_1",
+    "task_0_2",
+    "task_1_1",
+    "task_1_2",
+    "task_2_1",
+    "task_3_1",
+    "task_4_1",
+    "task_4_2"
+  ],
+  "parallelization_opportunities": {
+    "wave_2": {
+      "tasks": ["task_2_1", "task_2_2"],
+      "can_run_parallel": true,
+      "reason": "Conductor and Ralph are independent modules with same AgentManager dependency"
+    },
+    "wave_3": {
+      "tasks": ["task_3_1", "task_3_2"],
+      "can_run_parallel": false,
+      "reason": "WebviewProvider depends on ChatPanel updates"
+    }
+  },
+  "file_impact": {
+    "new_files": [
+      "src/claude/index.ts",
+      "src/claude/types.ts",
+      "src/claude/claudeProcess.ts",
+      "src/claude/conductor.ts",
+      "src/claude/ralph.ts"
+    ],
+    "modified_files": [
+      "src/agentManager.ts",
+      "src/chatPanel.ts",
+      "src/webviewProvider.ts",
+      "src/extension.ts",
+      "package.json"
+    ]
+  },
+  "risk_assessment": [
+    {
+      "id": "R1",
+      "description": "CLI JSON format changes",
+      "severity": "medium",
+      "mitigation": "Abstract parser, use existing streamParser"
+    },
+    {
+      "id": "R2",
+      "description": "Session isolation issues",
+      "severity": "medium",
+      "mitigation": "Unique session IDs per agent"
+    },
+    {
+      "id": "R3",
+      "description": "Memory leaks from processes",
+      "severity": "high",
+      "mitigation": "Proper cleanup on dispose"
+    },
+    {
+      "id": "R4",
+      "description": "UI performance with many agents",
+      "severity": "low",
+      "mitigation": "Virtual scrolling, limit displayed"
+    }
+  ]
+}

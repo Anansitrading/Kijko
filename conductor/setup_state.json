@@ -1,0 +1,14 @@
+{
+  "setup_version": "2.0.0",
+  "last_successful_step": "complete",
+  "completed_at": "2026-01-24T00:00:00.000Z",
+  "project_type": "brownfield",
+  "detected_stack": {
+    "language": "TypeScript",
+    "framework": "VS Code Extension API",
+    "build": "tsc",
+    "package_manager": "npm"
+  },
+  "dependency_graph_generated": true,
+  "scrum_analysis_completed": true
+}

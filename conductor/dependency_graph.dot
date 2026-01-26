@@ -1,0 +1,180 @@
+digraph MultiAgentOrchestration {
+    // Graph settings
+    rankdir=TB;
+    splines=ortho;
+    nodesep=0.8;
+    ranksep=1.0;
+    fontname="Helvetica";
+    fontsize=12;
+    label="Multi-Agent Orchestration System - Task Dependency Graph";
+    labelloc=t;
+
+    // Node defaults
+    node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+    edge [fontname="Helvetica", fontsize=9];
+
+    // ==========================================
+    // WAVE 0: Foundation (SEQUENTIAL)
+    // ==========================================
+    subgraph cluster_wave0 {
+        label="Wave 0: Foundation (SEQUENTIAL)";
+        style=filled;
+        color="#e3f2fd";
+        fontcolor="#1565c0";
+
+        task_0_1 [
+            label="Task 0.1\nCreate Directory\nStructure",
+            fillcolor="#bbdefb",
+            color="#1976d2"
+        ];
+
+        task_0_2 [
+            label="Task 0.2\nCreate Types\nModule",
+            fillcolor="#bbdefb",
+            color="#1976d2"
+        ];
+    }
+
+    // ==========================================
+    // WAVE 1: Core Process Management (SEQUENTIAL)
+    // ==========================================
+    subgraph cluster_wave1 {
+        label="Wave 1: Core Process (SEQUENTIAL)";
+        style=filled;
+        color="#e8f5e9";
+        fontcolor="#2e7d32";
+
+        task_1_1 [
+            label="Task 1.1\nClaudeProcess\nModule",
+            fillcolor="#c8e6c9",
+            color="#388e3c"
+        ];
+
+        task_1_2 [
+            label="Task 1.2\nUpdate Agent\nManager",
+            fillcolor="#c8e6c9",
+            color="#388e3c"
+        ];
+    }
+
+    // ==========================================
+    // WAVE 2: Orchestration (ASYNC)
+    // ==========================================
+    subgraph cluster_wave2 {
+        label="Wave 2: Orchestration (ASYNC)";
+        style=filled;
+        color="#fff3e0";
+        fontcolor="#e65100";
+
+        task_2_1 [
+            label="Task 2.1\nConductor\nModule\n(ASYNC)",
+            fillcolor="#ffe0b2",
+            color="#f57c00"
+        ];
+
+        task_2_2 [
+            label="Task 2.2\nRalph\nModule\n(ASYNC)",
+            fillcolor="#ffe0b2",
+            color="#f57c00"
+        ];
+    }
+
+    // ==========================================
+    // WAVE 3: UI Integration (ASYNC)
+    // ==========================================
+    subgraph cluster_wave3 {
+        label="Wave 3: UI Integration (ASYNC)";
+        style=filled;
+        color="#fce4ec";
+        fontcolor="#c2185b";
+
+        task_3_1 [
+            label="Task 3.1\nUpdate\nChatPanel\n(ASYNC)",
+            fillcolor="#f8bbd0",
+            color="#d81b60"
+        ];
+
+        task_3_2 [
+            label="Task 3.2\nUpdate\nWebviewProvider\n(ASYNC)",
+            fillcolor="#f8bbd0",
+            color="#d81b60"
+        ];
+    }
+
+    // ==========================================
+    // WAVE 4: Extension Integration (SEQUENTIAL)
+    // ==========================================
+    subgraph cluster_wave4 {
+        label="Wave 4: Integration (SEQUENTIAL)";
+        style=filled;
+        color="#f3e5f5";
+        fontcolor="#7b1fa2";
+
+        task_4_1 [
+            label="Task 4.1\nUpdate\nExtension",
+            fillcolor="#e1bee7",
+            color="#8e24aa"
+        ];
+
+        task_4_2 [
+            label="Task 4.2\nUpdate\nPackage.json",
+            fillcolor="#e1bee7",
+            color="#8e24aa"
+        ];
+    }
+
+    // ==========================================
+    // DEPENDENCIES (EDGES)
+    // ==========================================
+
+    // Wave 0 internal
+    task_0_1 -> task_0_2 [label="sequential", color="#1976d2", penwidth=2];
+
+    // Wave 0 -> Wave 1
+    task_0_2 -> task_1_1 [label="types", color="#388e3c", penwidth=2];
+
+    // Wave 1 internal
+    task_1_1 -> task_1_2 [label="sequential", color="#388e3c", penwidth=2];
+
+    // Wave 1 -> Wave 2 (fan out to ASYNC)
+    task_1_2 -> task_2_1 [label="agentManager", color="#f57c00", penwidth=2];
+    task_1_2 -> task_2_2 [label="agentManager", color="#f57c00", penwidth=2];
+
+    // Wave 2 -> Wave 3
+    task_2_1 -> task_3_1 [label="conductor", color="#d81b60", penwidth=2];
+    task_2_2 -> task_3_1 [label="ralph", color="#d81b60", style=dashed, penwidth=1.5];
+    task_3_1 -> task_3_2 [label="chatPanel", color="#d81b60", penwidth=2];
+
+    // Wave 3 -> Wave 4 (merge from ASYNC)
+    task_3_1 -> task_4_1 [label="UI ready", color="#8e24aa", penwidth=2];
+    task_3_2 -> task_4_1 [label="UI ready", color="#8e24aa", penwidth=2];
+
+    // Wave 4 internal
+    task_4_1 -> task_4_2 [label="sequential", color="#8e24aa", penwidth=2];
+
+    // ==========================================
+    // CRITICAL PATH (highlighted in red)
+    // ==========================================
+    // Critical path: 0.1 -> 0.2 -> 1.1 -> 1.2 -> 2.1 -> 3.1 -> 4.1 -> 4.2
+
+    // ==========================================
+    // LEGEND
+    // ==========================================
+    subgraph cluster_legend {
+        label="Legend";
+        style=filled;
+        color="#fafafa";
+        fontcolor="#424242";
+
+        node [shape=plaintext];
+        legend [label=<
+            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                <TR><TD COLSPAN="2" BGCOLOR="#f5f5f5"><B>Task Types</B></TD></TR>
+                <TR><TD BGCOLOR="#bbdefb">SEQUENTIAL</TD><TD>Must run in order</TD></TR>
+                <TR><TD BGCOLOR="#ffe0b2">ASYNC</TD><TD>Can run in parallel</TD></TR>
+                <TR><TD COLSPAN="2" BGCOLOR="#f5f5f5"><B>Critical Path</B></TD></TR>
+                <TR><TD COLSPAN="2">0.1 → 0.2 → 1.1 → 1.2 → 2.1 → 3.1 → 4.1 → 4.2</TD></TR>
+            </TABLE>
+        >];
+    }
+}

@@ -1,0 +1,355 @@
+{
+  "name": "claude-agent-spawner",
+  "displayName": "Claude Agent Spawner",
+  "description": "Spawn multiple Claude Code instances for parallel task execution - seamlessly integrates with Conductor workflow",
+  "version": "1.0.0",
+  "publisher": "masterchief",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "claude",
+    "anthropic",
+    "ai",
+    "agent",
+    "multi-agent",
+    "conductor",
+    "parallel"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "claudeAgentSpawner.spawnAgent",
+        "title": "Spawn New Claude Agent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "claudeAgentSpawner.spawnMultiple",
+        "title": "Spawn Multiple Agents from Tasks",
+        "icon": "$(server-process)"
+      },
+      {
+        "command": "claudeAgentSpawner.spawnFromConductor",
+        "title": "Spawn Agents from Conductor Track",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "claudeAgentSpawner.spawnCurrentWave",
+        "title": "Spawn Current Wave of Tasks",
+        "icon": "$(layers)"
+      },
+      {
+        "command": "claudeAgentSpawner.showPanel",
+        "title": "Show Agent Spawner Panel",
+        "icon": "$(window)"
+      },
+      {
+        "command": "claudeAgentSpawner.killAllAgents",
+        "title": "Kill All Agents",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "claudeAgentSpawner.killAgent",
+        "title": "Kill Specific Agent",
+        "icon": "$(close)"
+      },
+      {
+        "command": "claudeAgentSpawner.refreshAgents",
+        "title": "Refresh Agent Status",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "claudeAgentSpawner.toggleAutoDetect",
+        "title": "Toggle Auto-Detection",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "claudeAgentSpawner.focusAgent",
+        "title": "Focus Agent Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "claudeConductor.start",
+        "title": "Start Conductor Orchestration",
+        "category": "Conductor",
+        "icon": "$(play)"
+      },
+      {
+        "command": "claudeConductor.stopAll",
+        "title": "Stop Conductor and All Agents",
+        "category": "Conductor",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "claudeConductor.toggleRalph",
+        "title": "Toggle Ralph Health Monitoring",
+        "category": "Conductor",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "claudeConductor.forceAssessment",
+        "title": "Force Ralph Assessment",
+        "category": "Conductor",
+        "icon": "$(search)"
+      },
+      {
+        "command": "claudeConductor.openPanel",
+        "title": "Open Conductor Panel",
+        "category": "Conductor",
+        "icon": "$(window)"
+      },
+      {
+        "command": "claudeConductor.status",
+        "title": "Show Conductor Status",
+        "category": "Conductor",
+        "icon": "$(info)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claude-agent-spawner",
+          "title": "Claude Agents",
+          "icon": "media/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "claude-agent-spawner": [
+        {
+          "type": "webview",
+          "id": "claudeAgentSpawner.mainView",
+          "name": "Agent Manager"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "claudeAgentSpawner.spawnAgent",
+          "when": "view == claudeAgentSpawner.mainView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "claudeAgentSpawner.spawnCurrentWave",
+          "when": "view == claudeAgentSpawner.mainView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "claudeAgentSpawner.toggleAutoDetect",
+          "when": "view == claudeAgentSpawner.mainView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "claudeAgentSpawner.refreshAgents",
+          "when": "view == claudeAgentSpawner.mainView",
+          "group": "navigation@4"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Agent Spawner",
+      "properties": {
+        "claudeAgentSpawner.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your Anthropic API key for Claude API access. Get one at console.anthropic.com",
+          "order": 0
+        },
+        "claudeAgentSpawner.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-20250514",
+          "enum": [
+            "claude-sonnet-4-20250514",
+            "claude-opus-4-20250514",
+            "claude-3-5-sonnet-20241022",
+            "claude-3-5-haiku-20241022"
+          ],
+          "enumDescriptions": [
+            "Claude Sonnet 4 - Best balance of speed and capability (Recommended)",
+            "Claude Opus 4 - Most capable model",
+            "Claude 3.5 Sonnet - Previous generation",
+            "Claude 3.5 Haiku - Fast and efficient"
+          ],
+          "description": "Claude model to use for agent conversations",
+          "order": 1
+        },
+        "claudeAgentSpawner.maxTokens": {
+          "type": "number",
+          "default": 4096,
+          "minimum": 256,
+          "maximum": 8192,
+          "description": "Maximum tokens for Claude responses",
+          "order": 2
+        },
+        "claudeAgentSpawner.autoDetect.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic task detection and agent spawning"
+        },
+        "claudeAgentSpawner.autoDetect.startOnActivation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start auto-detection when extension activates"
+        },
+        "claudeAgentSpawner.autoDetect.spawnDelayMs": {
+          "type": "number",
+          "default": 1000,
+          "description": "Delay between spawning multiple agents (milliseconds)"
+        },
+        "claudeAgentSpawner.autoDetect.autoSpawnOnWaveComplete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically spawn next wave when current wave completes"
+        },
+        "claudeAgentSpawner.autoDetect.prioritizeByComplexity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prioritize tasks by complexity when auto-spawning"
+        },
+        "claudeAgentSpawner.autoDetect.complexityOrder": {
+          "type": "array",
+          "default": ["low", "medium", "high"],
+          "items": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "description": "Order of complexity for task prioritization"
+        },
+        "claudeAgentSpawner.useGitWorktrees": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create isolated git worktrees for each agent (advanced)"
+        },
+        "claudeAgentSpawner.worktreeBasePath": {
+          "type": "string",
+          "default": "../worktrees",
+          "description": "Base path for git worktrees (relative to workspace)"
+        },
+        "claudeAgentSpawner.conductorTracksPath": {
+          "type": "string",
+          "default": ".conductor/tracks",
+          "description": "Path to conductor tracks directory"
+        },
+        "claudeAgentSpawner.maxConcurrentAgents": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum number of concurrent agents"
+        },
+        "claudeAgentSpawner.claudeCommand": {
+          "type": "string",
+          "default": "claude",
+          "description": "Command to invoke Claude Code CLI"
+        },
+        "claudeAgentSpawner.autoStartPrompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically send initial prompt to spawned agents"
+        },
+        "claudeAgentSpawner.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notification messages for agent events"
+        },
+        "claudeAgentSpawner.useClaudeCLI": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use installed Claude Code CLI instead of direct API (recommended for tool use)",
+          "order": 3
+        },
+        "claudeAgentSpawner.cliAllowedTools": {
+          "type": "array",
+          "default": ["Read", "Edit", "Write", "Bash", "Glob", "Grep"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Tools to auto-approve when using Claude Code CLI",
+          "order": 4
+        },
+        "claudeAgentSpawner.cliTimeout": {
+          "type": "number",
+          "default": 300000,
+          "minimum": 30000,
+          "maximum": 3600000,
+          "description": "Timeout for CLI operations in milliseconds (default: 5 minutes)",
+          "order": 5
+        },
+        "claudeConductor.ralph.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Ralph health monitoring for orchestrated agents",
+          "order": 10
+        },
+        "claudeConductor.ralph.intervalMs": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 10000,
+          "maximum": 300000,
+          "description": "Ralph assessment interval in milliseconds (default: 30 seconds)",
+          "order": 11
+        },
+        "claudeConductor.ralph.stuckThresholdMs": {
+          "type": "number",
+          "default": 60000,
+          "minimum": 30000,
+          "maximum": 600000,
+          "description": "Time without activity before considering an agent stuck (default: 1 minute)",
+          "order": 12
+        },
+        "claudeConductor.ralph.errorThreshold": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Number of consecutive errors before flagging an agent",
+          "order": 13
+        },
+        "claudeConductor.autoStartRalph": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start Ralph when Conductor starts",
+          "order": 14
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package --no-dependencies",
+    "install-ext": "npm run package && code --install-extension claude-agent-spawner-*.vsix --force",
+    "dev": "npm run compile && npm run install-ext",
+    "dev:watch": "npm run compile && npm run install-ext && npm run watch"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.56.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "glob": "^10.3.10"
+  }
+}

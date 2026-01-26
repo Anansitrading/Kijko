@@ -1,0 +1,63 @@
+{
+  "track_id": "cli_integration_20260124",
+  "name": "Headless CLI Integration",
+  "type": "feature",
+  "status": "pending",
+  "created_at": "2026-01-24T00:00:00.000Z",
+  "plan_mode": "scrum",
+  "tech_stack": ["TypeScript", "VS Code Extension API", "child_process", "EventEmitter"],
+  "total_tasks": 10,
+  "completed_tasks": 7,
+  "total_waves": 5,
+  "critical_path_length": 4,
+  "parallelization_factor": 0.4,
+  "waves": [
+    {
+      "wave": 0,
+      "type": "SEQUENTIAL",
+      "tasks": ["task_0_1_cli_detector"],
+      "max_agents": 1
+    },
+    {
+      "wave": 1,
+      "type": "ASYNC",
+      "tasks": ["task_1_1_stream_parser_ASYNC", "task_1_2_settings_ASYNC"],
+      "max_agents": 2
+    },
+    {
+      "wave": 2,
+      "type": "SEQUENTIAL",
+      "tasks": ["task_2_1_cli_manager", "task_2_1_extension_init"],
+      "max_agents": 1
+    },
+    {
+      "wave": 3,
+      "type": "SEQUENTIAL",
+      "tasks": ["task_3_1_chatpanel_cli", "task_3_2_agent_config"],
+      "max_agents": 1
+    },
+    {
+      "wave": 4,
+      "type": "ASYNC",
+      "tasks": ["task_4_1_tool_ui_ASYNC", "task_4_2_fallback_ASYNC", "task_4_3_ui_indicator_ASYNC"],
+      "max_agents": 3
+    }
+  ],
+  "critical_path": [
+    "task_0_1_cli_detector",
+    "task_1_1_stream_parser_ASYNC",
+    "task_2_1_cli_manager",
+    "task_3_1_chatpanel_cli"
+  ],
+  "files_created": [
+    "src/cliDetector.ts",
+    "src/streamParser.ts",
+    "src/cliManager.ts"
+  ],
+  "files_modified": [
+    "package.json",
+    "src/extension.ts",
+    "src/chatPanel.ts",
+    "src/agentManager.ts"
+  ]
+}
